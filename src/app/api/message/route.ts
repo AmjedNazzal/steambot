@@ -10,10 +10,13 @@ import {
 
 async function getQuery(messages: ChatGPTMessage[]) {
   try {
-    messages.unshift({
-      role: "system",
-      content: initialPrompt,
-    });
+    const queryBotMessages = [
+      {
+        role: "system",
+        content: initialPrompt,
+      },
+      ...messages,
+    ];
 
     const res = await fetch(`${process.env.OPENAI_URL}`, {
       method: "POST",
@@ -23,7 +26,7 @@ async function getQuery(messages: ChatGPTMessage[]) {
       },
       body: JSON.stringify({
         model: "gpt-3.5-turbo",
-        messages: messages,
+        messages: queryBotMessages,
         temperature: 0.1,
         top_p: 1,
         frequency_penalty: 0,
@@ -34,34 +37,38 @@ async function getQuery(messages: ChatGPTMessage[]) {
 
     if (res.ok) {
       const data = await res.json();
-      const responseBody = data.choices[0].message.content;
-      const parsedBody = JSON.parse(responseBody);
-      if (!parsedBody) {
+      try {
+        const responseBody = data.choices[0].message.content;
+        const parsedBody = JSON.parse(responseBody);
+        if (!parsedBody) {
+          return "No games found";
+        }
+        let query = {};
+        let aggregationPipeline: any[] = [];
+        if (parsedBody && parsedBody[0].name) {
+          query = { Name: parsedBody[0].name };
+          const gameWithName = await gamesDescriptions.findOne({
+            Name: { $regex: new RegExp("^" + parsedBody[0].name + "$", "i") },
+          });
+          if (gameWithName && gameWithName.Tags) {
+            const gameWithNameGenres = gameWithName.Tags.split(",");
+            const gameWithNameAggregation =
+              gameWithNameQuery(gameWithNameGenres);
+
+            aggregationPipeline = gameWithNameAggregation;
+          } else return "No games found";
+        } else {
+          const noNameQueryArr = noNameQuery(parsedBody[0]);
+          aggregationPipeline = noNameQueryArr;
+        }
+        const games = await gamesDescriptions.aggregate(aggregationPipeline);
+
+        if (games) {
+          return games;
+        } else return "No games found";
+      } catch (error) {
         return "No games found";
       }
-      let query = {};
-      let aggregationPipeline: any[] = [];
-      if (parsedBody && parsedBody[0].name) {
-        query = { Name: parsedBody[0].name };
-        const gameWithName = await gamesDescriptions.findOne({
-          Name: { $regex: new RegExp("^" + parsedBody[0].name + "$", "i") },
-        });
-        if (gameWithName && gameWithName.Tags) {
-          const gameWithNameGenres = gameWithName.Tags.split(",");
-          const gameWithNameAggregation = gameWithNameQuery(gameWithNameGenres);
-
-          aggregationPipeline = gameWithNameAggregation;
-        } else return "No games found";
-      } else {
-        const noNameQueryArr = noNameQuery(parsedBody[0]);
-        aggregationPipeline = noNameQueryArr;
-      }
-
-      const games = await gamesDescriptions.aggregate(aggregationPipeline);
-
-      if (games) {
-        return games;
-      } else return "No games found";
     }
   } catch (error) {
     return null;
@@ -73,7 +80,7 @@ export async function POST(req: Request) {
 
   const parsedMessages = MessageArraySchema.parse(messages);
 
-  const filteredMessages = parsedMessages.filter((message) => {
+  const filteredMessages = parsedMessages.filter((message: Message) => {
     if (message.text === "..." && !message.isUserMessage) {
       return false;
     }
@@ -81,27 +88,19 @@ export async function POST(req: Request) {
     return true;
   });
 
-  const outboundMessages: ChatGPTMessage[] = filteredMessages.map((message) => {
-    return {
-      role: message.isUserMessage ? "user" : "system",
-      content: message.text,
-    };
-  });
+  const outboundMessages: ChatGPTMessage[] = filteredMessages.map(
+    (message: Message) => {
+      return {
+        role: message.isUserMessage ? "user" : "assistant",
+        content: message.text,
+      };
+    }
+  );
 
-  const initialMessageList = [...outboundMessages];
-
-  initialMessageList.reverse();
-
-  const initialRes = await getQuery([initialMessageList[0]]);
+  const initialRes = await getQuery(outboundMessages);
 
   if (!initialRes) {
     throw new Error("Something went wrong, please try again later");
-  }
-
-  for (let i = outboundMessages.length - 1; i >= 0; i--) {
-    if (outboundMessages[i].role === "system") {
-      outboundMessages.splice(i, 1);
-    }
   }
 
   const chatbotPrompt = afterQueryPrompt(initialRes);
