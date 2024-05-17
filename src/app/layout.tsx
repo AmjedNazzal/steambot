@@ -19,14 +19,11 @@ export default function RootLayout({
           property="og:description"
           content="Search the Steam store with the help of AI"
         />
-        <meta
-          property="og:url"
-          content="https://steambot-amjed-nazzals-projects.vercel.app/"
-        />
+        <meta property="og:url" content="https://steambot-iota.vercel.app/" />
         <meta property="og:site_name" content="MyNotes" />
         <meta
           property="og:image"
-          content="https://steambot-amjed-nazzals-projects.vercel.app/opengraph-image.jpg"
+          content="https://steambot-iota.vercel.app/opengraph-image.jpg"
         />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />

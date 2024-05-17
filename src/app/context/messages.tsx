@@ -22,7 +22,7 @@ export function MessagesProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: nanoid(),
-      text: "Hello, how can I help you?",
+      text: "Hello! Ask me for Steam games suggestions based on similarity to another game, genre or a description!",
       isUserMessage: false,
     },
   ]);
@@ -40,7 +40,11 @@ export function MessagesProvider({ children }: { children: ReactNode }) {
   };
 
   const removeMessage = (id: string) => {
-    setMessages((prev) => prev.filter((message) => message.id !== id));
+    setMessages((prev) =>
+      prev.filter((message) => {
+        return message.id !== id && message.text !== "...";
+      })
+    );
   };
 
   const updateMessage = (

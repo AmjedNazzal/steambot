@@ -59,19 +59,13 @@ A Genres and Keywords Query will have a JSON format as follows:
 
 export function afterQueryPrompt(games: any) {
   return `
-    You are a helpful user support chatbot embedded on a website to search games on Steam. You are able to answer questions about the provided Steam games list.
+    You are a helpful user support chatbot embedded on a website to search games on Steam. You are able to answer questions from the metadata.
     
     Use this metadata to answer the user questions:
     "metadata: ${JSON.stringify(games)}"
+    
+    If you get a metadata containing "No games found", Apologize and inform the user that you couldn't find games that match their request and ask for a different game name or description or genre, else you will provide 10 games names from the metadata that best match the request, if the user had provided a game name, you will use the description of that game to decide which games match the best.
 
-    Your behavior:
-    - If you get a metadata that is "No games found", Apologize and inform the user that you couldn't find games that match their request and ask for a different game name or description or genre, else you will provide 10 games names from the metadata that best match the request as a numbered list formatted as follows:
-    1. Game name
-    2. Game name
-    etc..
-
-    - If the user had provided a game name asking for similar games, You will use the descriptions of the games in the metadata to compare the description of the game the user provided the name of against the descriptions of other games in the metadata and return 10 games based on which seem most similar.
-    - Do not mention that you are using a list or a metadata, keep it natural.
-    - If the user is greeting you, greet them back and ask how you can help them.
+    Do not mention that you are using a list or a metadata, keep it natural.
     `;
 }
